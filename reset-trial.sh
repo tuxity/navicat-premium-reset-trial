@@ -47,7 +47,7 @@ regex="([0-9A-Z]{32}) = "
 
 hash=${BASH_REMATCH[1]}
 
-if [ ! -z $hash ]; then
+if [ ! -z "$hash" ]; then
     echo "deleting $hash array..."
     defaults delete $file $hash
 fi
@@ -57,7 +57,7 @@ regex="\.([0-9A-Z]{32})"
 
 hash2=${BASH_REMATCH[1]}
 
-if [ ! -z $hash2 ]; then
+if [ ! -z "$hash2" ]; then
     echo "deleting $hash2 folder..."
     rm ~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium/.$hash2
 fi
@@ -74,7 +74,7 @@ fi
 if [ "$needs_keychain" = true ]; then
     keychain_hash=$(security dump-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null | grep -A 5 $service | grep acct | grep -oE '[0-9A-F]{32}')
 
-    if [ ! -z $keychain_hash ]; then
+    if [ ! -z "$keychain_hash" ]; then
         echo "deleting keychain entry $keychain_hash..."
         security delete-generic-password -s $service -a $keychain_hash &>/dev/null
     fi
