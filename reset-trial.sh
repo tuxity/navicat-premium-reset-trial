@@ -2,6 +2,19 @@
 
 set -e
 
+# Check if Navicat is running
+if pgrep -x "Navicat Premium" > /dev/null; then
+    echo ""
+    echo "   Navicat Premium is currently running!"
+    echo "   Please save your work before continuing."
+    echo ""
+    read -n 1 -s -r -p "Press any key to close Navicat and continue..."
+    echo ""
+    echo "Closing Navicat Premium..."
+    killall "Navicat Premium" 2>/dev/null
+    sleep 1
+fi
+
 file=$(defaults read /Applications/Navicat\ Premium.app/Contents/Info.plist)
 
 regex="CFBundleShortVersionString = \"([^\"]+)\""
