@@ -59,7 +59,7 @@ hash2=${BASH_REMATCH[1]}
 
 if [ ! -z "$hash2" ]; then
     echo "deleting $hash2 folder..."
-    rm ~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium/.$hash2
+    rm -f ~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium/.$hash2
 fi
 
 # Keychain cleanup only needed for v17.3.7+
@@ -72,11 +72,17 @@ if [[ "$version" == "17" ]]; then
 fi
 
 if [ "$needs_keychain" = true ]; then
-    keychain_hash=$(security dump-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null | grep -A 5 $service | grep acct | grep -oE '[0-9A-F]{32}')
+    # Get all keychain hashes for this service (may be multiple)
+    keychain_hashes=$(security dump-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null | grep -A 5 "$service" | grep acct | grep -oE '[0-9A-F]{32}')
 
-    if [ ! -z "$keychain_hash" ]; then
-        echo "deleting keychain entry $keychain_hash..."
-        security delete-generic-password -s $service -a $keychain_hash &>/dev/null
+    if [ ! -z "$keychain_hashes" ]; then
+        # Delete each keychain entry
+        while IFS= read -r keychain_hash; do
+            if [ ! -z "$keychain_hash" ]; then
+                echo "deleting keychain entry $keychain_hash..."
+                security delete-generic-password -s "$service" -a "$keychain_hash" &>/dev/null
+            fi
+        done <<< "$keychain_hashes"
     fi
 fi
 
