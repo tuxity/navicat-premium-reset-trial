@@ -74,7 +74,7 @@ fi
 
 if [ "$needs_keychain" = true ]; then
     # Get all keychain hashes for this service (may be multiple)
-    keychain_hashes=$(security dump-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null | grep -A 5 "$service" | grep acct | grep -oE '[0-9A-F]{32}')
+    keychain_hashes=$(security dump-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null | grep -A 5 "$service" | grep acct | grep -oE '[0-9A-F]{32}' || true)
 
     if [ ! -z "$keychain_hashes" ]; then
         # Delete each keychain entry
@@ -84,6 +84,8 @@ if [ "$needs_keychain" = true ]; then
                 security delete-generic-password -s "$service" -a "$keychain_hash" &>/dev/null
             fi
         done <<< "$keychain_hashes"
+    else
+        echo "No keychain entries found (already cleared)"
     fi
 fi
 
