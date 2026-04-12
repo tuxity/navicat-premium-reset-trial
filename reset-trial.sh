@@ -40,26 +40,27 @@ case $version in
        ;;
 esac
 
-echo "Reseting trial time..."
+echo "Resetting trial time..."
 
+plist_content=$(defaults read $file)
 regex="([0-9A-Z]{32}) = "
-[[ $(defaults read $file) =~ $regex ]]
-
-hash=${BASH_REMATCH[1]}
-
-if [ ! -z "$hash" ]; then
+if [[ $plist_content =~ $regex ]]; then
+    hash=${BASH_REMATCH[1]}
     echo "deleting $hash array..."
     defaults delete $file $hash
+else
+    echo "No trial hash found in plist (already cleared)"
 fi
 
+cc_dir=~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium
+hidden_files=$(ls -a "$cc_dir" | grep '^\.' || true)
 regex="\.([0-9A-Z]{32})"
-[[ $(ls -a ~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium/ | grep '^\.') =~ $regex ]]
-
-hash2=${BASH_REMATCH[1]}
-
-if [ ! -z "$hash2" ]; then
-    echo "deleting $hash2 folder..."
-    rm -f ~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium/.$hash2
+if [[ $hidden_files =~ $regex ]]; then
+    hash2=${BASH_REMATCH[1]}
+    echo "deleting $hash2 file..."
+    rm -f "$cc_dir/.$hash2"
+else
+    echo "No trial hash file found in CC directory (already cleared)"
 fi
 
 # Keychain cleanup only needed for v17.3.7+
