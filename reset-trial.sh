@@ -26,7 +26,7 @@ version=${full_version%%.*}
 echo "Detected Navicat Premium version $full_version"
 
 case $version in
-    "17"|"16")
+    "18"|"17"|"16")
         service=com.navicat.NavicatPremium
         file=~/Library/Preferences/$service.plist
         ;;
@@ -40,50 +40,44 @@ case $version in
        ;;
 esac
 
-echo "Reseting trial time..."
+echo "Resetting trial time..."
 
-regex="([0-9A-Z]{32}) = "
-[[ $(defaults read $file) =~ $regex ]]
+# 1. Delete plist hash entries
+if [ -f "$file" ]; then
+    regex="([0-9A-Z]{32}) = "
+    [[ $(defaults read "$file" 2>/dev/null) =~ $regex ]]
+    hash=${BASH_REMATCH[1]}
 
-hash=${BASH_REMATCH[1]}
-
-if [ ! -z "$hash" ]; then
-    echo "deleting $hash array..."
-    defaults delete $file $hash
-fi
-
-regex="\.([0-9A-Z]{32})"
-[[ $(ls -a ~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium/ | grep '^\.') =~ $regex ]]
-
-hash2=${BASH_REMATCH[1]}
-
-if [ ! -z "$hash2" ]; then
-    echo "deleting $hash2 folder..."
-    rm -f ~/Library/Application\ Support/PremiumSoft\ CyberTech/Navicat\ CC/Navicat\ Premium/.$hash2
-fi
-
-# Keychain cleanup only needed for v17.3.7+
-needs_keychain=false
-if [[ "$version" == "17" ]]; then
-    IFS='.' read -r maj min patch <<< "$full_version"
-    if (( min > 3 )) || (( min == 3 && patch >= 7 )); then
-        needs_keychain=true
+    if [ -n "$hash" ]; then
+        echo "deleting $hash array from plist..."
+        defaults delete "$file" "$hash" 2>/dev/null || true
     fi
 fi
 
-if [ "$needs_keychain" = true ]; then
-    # Get all keychain hashes for this service (may be multiple)
-    keychain_hashes=$(security dump-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null | grep -A 5 "$service" | grep acct | grep -oE '[0-9A-F]{32}')
-
-    if [ ! -z "$keychain_hashes" ]; then
-        # Delete each keychain entry
-        while IFS= read -r keychain_hash; do
-            if [ ! -z "$keychain_hash" ]; then
-                echo "deleting keychain entry $keychain_hash..."
-                security delete-generic-password -s "$service" -a "$keychain_hash" &>/dev/null
-            fi
-        done <<< "$keychain_hashes"
+# 2. Delete Application Support hidden hash folders
+app_support_dir="$HOME/Library/Application Support/PremiumSoft CyberTech/Navicat CC/Navicat Premium"
+if [ -d "$app_support_dir" ]; then
+    regex="\.([0-9A-Z]{32})"
+    hidden_files=$(ls -a "$app_support_dir" | grep '^\.')
+    if [[ $hidden_files =~ $regex ]]; then
+        hash2=${BASH_REMATCH[1]}
+        if [ -n "$hash2" ]; then
+            echo "deleting hidden folder .$hash2..."
+            rm -rf "$app_support_dir/.$hash2"
+        fi
     fi
 fi
 
-echo "Done"
+# 3. Delete Keychain entries (Required for v17.3.7+ and v18)
+keychain_hashes=$(security dump-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null | grep -A 5 "$service" | grep acct | grep -oE '[0-9A-F]{32}')
+
+if [ -n "$keychain_hashes" ]; then
+    while IFS= read -r keychain_hash; do
+        if [ -n "$keychain_hash" ]; then
+            echo "deleting keychain entry $keychain_hash..."
+            security delete-generic-password -s "$service" -a "$keychain_hash" &>/dev/null || true
+        fi
+    done <<< "$keychain_hashes"
+fi
+
+echo "Done! Trial reset successfully."
